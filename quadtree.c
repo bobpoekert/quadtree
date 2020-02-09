@@ -7,7 +7,20 @@
 
 #include "quadtree.h"
 
-/* based on http://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN */
+#ifdef QT_MBMI2
+#include <immintrin.h>
+qt_Zpoint qt_zpoint(uint32_t x, uint32_t y) {
+  return _pdep_u32(x, 0x55555555) | _pdep_u32(y,0xaaaaaaaa);
+}
+
+void qt_zpoint_decode(qt_Zpoint m, uint32_t *x, uint32_t *y) {
+  *x = _pext_u64(m, 0x5555555555555555);
+  *y = _pext_u64(m, 0xaaaaaaaaaaaaaaaa);
+}
+#else
+// based on http://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN 
+
+// B[i] is one bits spread out with gaps S[i] bits wide
 static const uint64_t B[] = {
     0x5555555555555555, 0x3333333333333333, 0x0F0F0F0F0f0f0f0f, 0x00FF00FF00ff00ff,
     0x0000ffff0000ffff
@@ -20,6 +33,8 @@ qt_Zpoint qt_zpoint(uint32_t x, uint32_t y) {
     uint64_t x64 = x; 
     uint64_t y64 = y; 
 
+    // x | (x << k) duplicates x
+    // and the & B[k] masks out every other bit position
     x64 = (x64 | (x64 << S[4])) & B[4];
     x64 = (x64 | (x64 << S[3])) & B[3];
     x64 = (x64 | (x64 << S[2])) & B[2];
@@ -40,22 +55,23 @@ void qt_zpoint_decode(qt_Zpoint z, uint32_t *x, uint32_t *y) {
     uint64_t x64 = 0;
     uint64_t y64 = 0;
     
-    x64 = (z | (z << S[0])) & B[0];
-    x64 = (x64 | (x64 << S[1])) & B[1];
-    x64 = (x64 | (x64 << S[2])) & B[2];
-    x64 = (x64 | (x64 << S[3])) & B[3];
-    x64 = (x64 | (x64 << S[4])) & B[4];
+    x64 = (z | (z >> S[0])) & B[0]; // x64 is now every other bit
+    x64 = (x64 | (x64 >> S[1])) & B[1];
+    x64 = (x64 | (x64 >> S[2])) & B[2];
+    x64 = (x64 | (x64 >> S[3])) & B[3];
+    x64 = (x64 | (x64 >> S[4])) & B[4];
 
-    y64 = ((z >> 1) | ((z >> 1) << S[0])) & B[0];
-    y64 = (y64 | (y64 << S[1])) & B[1];
-    y64 = (y64 | (y64 << S[2])) & B[2];
-    y64 = (y64 | (y64 << S[3])) & B[3];
-    y64 = (y64 | (y64 << S[4])) & B[4];
+    y64 = ((z >> 1) | ((z >> 1) >> S[0])) & B[0];
+    y64 = (y64 | (y64 >> S[1])) & B[1];
+    y64 = (y64 | (y64 >> S[2])) & B[2];
+    y64 = (y64 | (y64 >> S[3])) & B[3];
+    y64 = (y64 | (y64 >> S[4])) & B[4];
 
     *x = (uint32_t) x64;
     *y = (uint32_t) y64;
 
 }
+#endif
 
 int qt_init(qt_Tree *tree) {
     tree->length = 0;

@@ -1,7 +1,12 @@
 from distutils.core import setup
+from distutils.extension import Extension
 from Cython.Build import cythonize
 from subprocess import call
 import numpy
 
 setup(name='py_quadtree',
-        ext_modules=cythonize('py_quadtree.pyx', include_path=[numpy.get_include()]))
+        ext_modules=cythonize([
+            Extension('py_quadtree', ['py_quadtree.pyx'],
+                include_dirs=[numpy.get_include()],
+                #extra_compile_args=['-DQT_MBMI2', '-mbmi2']
+                )]))
