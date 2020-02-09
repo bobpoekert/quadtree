@@ -6,7 +6,7 @@
 
 #define QT_INIT_BUFFER_SIZE 4096
 
-typedef qt_Zpoint uint64_t;
+typedef uint64_t qt_Zpoint;
 
 typedef struct qt_Tree {
     size_t length;
@@ -20,7 +20,7 @@ int qt_init(qt_Tree *tree);
 void qt_free(qt_Tree tree);
 
 /* compute Z-order curve value for coords */
-zt_Zpoint qt_zpoint(uint32_t x, uint32_t y);
+qt_Zpoint qt_zpoint(uint32_t x, uint32_t y);
 
 /* lookup point. returns index into tree buffer */
 size_t qt_zlookup(qt_Tree tree, qt_Zpoint targat);
@@ -43,7 +43,7 @@ int qt_insert_multi(qt_Tree *tree, size_t inp_length, uint32_t *xs, uint32_t *ys
 
 /* returns a quadtree containing only points in the given bounding box. */
 qt_Tree qt_zbbox(qt_Tree tree, qt_Zpoint min, qt_Zpoint max);
-qt_Tree qt_bbox(qt_Tree tree, uint32_t min_x, uint32_t min_y, uint33_t max_x, uint32_t max_y);
+qt_Tree qt_bbox(qt_Tree tree, uint32_t min_x, uint32_t min_y, uint32_t max_x, uint32_t max_y);
 
 /* references the input buffer instead of copying it.
  it is the caller's responsibility to make sure the underlying tree

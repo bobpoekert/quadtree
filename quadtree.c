@@ -72,10 +72,11 @@ size_t qt_zlookup(qt_Tree tree, qt_Zpoint target) {
     /* binary search */
     size_t left = 0;
     size_t right = tree.length - 1;
+    size_t cursor = 0;
 
     while(right > left) {
-        size_t cursor = right - ((right - left) / 2);
-        qt_Zpoint pivot = target.buffer[cursor];
+        cursor = right - ((right - left) / 2);
+        qt_Zpoint pivot = tree.buffer[cursor];
         if (pivot == target) {
             return cursor;
         } else if (pivot < target) {
@@ -91,7 +92,7 @@ size_t qt_zlookup(qt_Tree tree, qt_Zpoint target) {
 ssize_t qt_lookup(qt_Tree tree, uint32_t x, uint32_t y) {
     qt_Zpoint target = qt_zpoint(x, y);
     size_t res = qt_zlookup(tree, target);
-    return tree.buffer[res] == target ? res : -1;
+    return (tree.buffer[res] == target) ? res : -1;
 }
 
 int qt_extend(qt_Tree *tree) {
@@ -101,11 +102,11 @@ int qt_extend(qt_Tree *tree) {
 }
 
 ssize_t qt_zinsert(qt_Tree *tree, qt_Zpoint target) {
-    size_t pivot = qt_zlookup(tree, target);
-    if (tree.buffer[pivot] == target) return pivot;
+    size_t pivot = qt_zlookup(*tree, target);
+    if (tree->buffer[pivot] == target) return pivot;
 
-    if (tree.allocated_size <= tree.length+1) {
-        if (qt_extend(qt_Tree *tree) < 0) return -1;
+    if (tree->allocated_size <= tree->length+1) {
+        if (qt_extend(tree) < 0) return -1;
     }
 
     memmove(&tree->buffer[pivot + 1], &tree->buffer[pivot], tree->length - pivot);
@@ -115,7 +116,7 @@ ssize_t qt_zinsert(qt_Tree *tree, qt_Zpoint target) {
 }
 
 ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y) {
-    return qt_zinsert(tree, zt_zpoint(x, y));
+    return qt_zinsert(tree, qt_zpoint(x, y));
 }
 
 void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer) {
@@ -129,9 +130,9 @@ void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer)
     uint64_t *back_buffer = scratch_buffer;
 
     while(shift_bits < 64) {
-        bucket_offsets = {0};
-        bucket_lengths = {0};
-        bucket_counts = {0};
+        memset(bucket_offsets, 0, sizeof(size_t) * 16);
+        memset(bucket_lengths, 0, sizeof(size_t) * 16);
+        memset(bucket_counts, 0, sizeof(size_t) * 16);
         for (size_t i=0; i < buffer_size; i++) {
             uint8_t radix = (uint8_t) ((front_buffer[i] & mod_mask) >> shift_bits);
             bucket_counts[radix]++;
@@ -165,7 +166,7 @@ size_t riffle_merge(
     size_t cursor_a = 0;
     size_t cursor_b = 0;
     size_t cursor_res = 0;
-    size_t cursr_inp = 0;
+    size_t cursor_inp = 0;
 
     size_t max_res_size = source_a_size + source_b_size;
 
@@ -199,7 +200,7 @@ size_t riffle_merge(
 
 }
 
-int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, zt_Zpoint *inp) {
+int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
     // bucket sort inp, then riffle merge into tree->buffer
     uint64_t *scratch_buffer = malloc(sizeof(uint64_t) * inp_length);
     if (!scratch_buffer) return -1;
