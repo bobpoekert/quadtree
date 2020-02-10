@@ -18,59 +18,41 @@ void qt_zpoint_decode(qt_Zpoint m, uint32_t *x, uint32_t *y) {
   *y = _pext_u64(m, 0xaaaaaaaaaaaaaaaa);
 }
 #else
-// based on http://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN 
 
-// B[i] is one bits spread out with gaps S[i] bits wide
-static const uint64_t B[] = {
-    0x5555555555555555, 0x3333333333333333, 0x0F0F0F0F0f0f0f0f, 0x00FF00FF00ff00ff,
-    0x0000ffff0000ffff
-    };
-static const uint64_t S[] = {1, 2, 4, 8, 16};
-
+// https://stackoverflow.com/questions/30539347/2d-morton-code-encode-decode-64bits
 qt_Zpoint qt_zpoint(uint32_t x, uint32_t y) {
-    // Interleave lower 32 bits of x and y, so the bits of x
-    // are in the even positions and bits from y in the odd;
-    uint64_t x64 = x; 
-    uint64_t y64 = y; 
+    uint64_t x64 = (uint64_t) x;
+    uint64_t y64 = (uint64_t) y;
+    x64 = (x64 | (x64 << 16)) & 0x640000FFFF0000FFFF;
+    x64 = (x64 | (x64 << 8)) & 0x6400FF00FF00FF00FF;
+    x64 = (x64 | (x64 << 4)) & 0x640F0F0F0F0F0F0F0F;
+    x64 = (x64 | (x64 << 2)) & 0x643333333333333333;
+    x64 = (x64 | (x64 << 1)) & 0x645555555555555555;
 
-    // x | (x << k) duplicates x
-    // and the & B[k] masks out every other bit position
-    x64 = (x64 | (x64 << S[4])) & B[4];
-    x64 = (x64 | (x64 << S[3])) & B[3];
-    x64 = (x64 | (x64 << S[2])) & B[2];
-    x64 = (x64 | (x64 << S[1])) & B[1];
-    x64 = (x64 | (x64 << S[0])) & B[0];
-
-    y64 = (y64 | (y64 << S[4])) & B[4];
-    y64 = (y64 | (y64 << S[3])) & B[3];
-    y64 = (y64 | (y64 << S[2])) & B[2];
-    y64 = (y64 | (y64 << S[1])) & B[1];
-    y64 = (y64 | (y64 << S[0])) & B[0];
+    y64 = (y64 | (y64 << 16)) & 0x0000FFFF0000FFFF;
+    y64 = (y64 | (y64 << 8)) & 0x00FF00FF00FF00FF;
+    y64 = (y64 | (y64 << 4)) & 0x0F0F0F0F0F0F0F0F;
+    y64 = (y64 | (y64 << 2)) & 0x3333333333333333;
+    y64 = (y64 | (y64 << 1)) & 0x5555555555555555;
 
     return x64 | (y64 << 1);
 }
 
-void qt_zpoint_decode(qt_Zpoint z, uint32_t *x, uint32_t *y) {
-
-    uint64_t x64 = 0;
-    uint64_t y64 = 0;
-    
-    x64 = (z | (z >> S[0])) & B[0]; // x64 is now every other bit
-    x64 = (x64 | (x64 >> S[1])) & B[1];
-    x64 = (x64 | (x64 >> S[2])) & B[2];
-    x64 = (x64 | (x64 >> S[3])) & B[3];
-    x64 = (x64 | (x64 >> S[4])) & B[4];
-
-    y64 = ((z >> 1) | ((z >> 1) >> S[0])) & B[0];
-    y64 = (y64 | (y64 >> S[1])) & B[1];
-    y64 = (y64 | (y64 >> S[2])) & B[2];
-    y64 = (y64 | (y64 >> S[3])) & B[3];
-    y64 = (y64 | (y64 >> S[4])) & B[4];
-
-    *x = (uint32_t) x64;
-    *y = (uint32_t) y64;
-
+inline uint32_t morton_1(uint64_t x) {
+    x = x & 0x5555555555555555;
+    x = (x | (x >> 1))  & 0x3333333333333333;
+    x = (x | (x >> 2))  & 0x0F0F0F0F0F0F0F0F;
+    x = (x | (x >> 4))  & 0x00FF00FF00FF00FF;
+    x = (x | (x >> 8))  & 0x0000FFFF0000FFFF;
+    x = (x | (x >> 16)) & 0x00000000FFFFFFFF;
+    return (uint32_t)x;
 }
+
+void qt_zpoint_decode(qt_Zpoint z, uint32_t *x, uint32_t *y) {
+    *x = morton_1(z);
+    *y = morton_1(z >> 1);
+}
+
 #endif
 
 int qt_init(qt_Tree *tree) {
@@ -225,6 +207,10 @@ int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
 
     size_t res_length = inp_length + tree->length;
     uint64_t *res = malloc(sizeof(uint64_t) * res_length);
+    if (!res) {
+        free(scratch_buffer);
+        return -1;
+    }
     res_length = riffle_merge(tree->length, tree->buffer, inp_length, inp, res);
     res = realloc(res, res_length * sizeof(uint64_t));
     tree->length = res_length;

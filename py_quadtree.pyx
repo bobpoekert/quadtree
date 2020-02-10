@@ -36,14 +36,14 @@ def pack_zpoints(
 
     cdef size_t i
     for i in range(size):
-        res[i] = <uint64_t> qt_zpoint(xs[i], ys[i])
+        res[i] = qt_zpoint(xs[i], ys[i])
 
     return res
 
 def unpack_zpoints(np.ndarray[np.uint64_t, ndim=1, mode='c'] points):
     cdef size_t length = points.shape[0]
-    cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] xs = np.empty((length,), dtype=np.uint32)
-    cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] ys = np.empty((length,), dtype=np.uint32)
+    cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] xs = np.zeros((length,), dtype=np.uint32)
+    cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] ys = np.zeros((length,), dtype=np.uint32)
 
     cdef uint32_t x
     cdef uint32_t y
