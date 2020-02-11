@@ -30,11 +30,12 @@ def naive_deinterleave(vs):
 
     return xs, ys
 
-def generate_points():
-    return (
-            np.random.randint(2**32, size=(10**4,), dtype=np.uint32),
-            np.random.randint(2**32, size=(10**4,), dtype=np.uint32)
+test_data = (
+            np.random.randint(2**32, size=(10**5,), dtype=np.uint32),
+            np.random.randint(2**32, size=(10**5,), dtype=np.uint32)
             )
+def generate_points():
+    return test_data
 
 class TestZcurve(unittest.TestCase):
 
@@ -88,6 +89,49 @@ class TestZcurve(unittest.TestCase):
 
         self.assertEqual(np.count_nonzero(res_xs - xs), 0)
         self.assertEqual(np.count_nonzero(res_ys - ys), 0)
+
+class TestSort(unittest.TestCase):
+
+    def test_init(self):
+        xs, ys = generate_points()
+
+        zs = qt.pack_zpoints(xs, ys)
+
+        tree = qt.Quadtree()
+        tree.insert_multi(xs, ys)
+
+        buf = tree.get_buffer()
+
+        self.assertEqual(buf.shape, zs.shape)
+        self.assertEqual(np.count_nonzero(buf[:-1] > buf[1:]), 0)
+
+'''
+class TestPointRadius(unittest.TestCase):
+
+    def test_point_radius(self):
+
+        xs, ys = generate_points()
+
+        tree = qt.Quadtree()
+        tree.insert_multi(xs, ys)
+
+        center_x = np.mean(xs)
+        center_y = np.mean(ys)
+
+        radius = (np.max(xs) - np.min(xs)) / 4
+
+        distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
+        targets = distances <= radius
+        target_xs = xs[targets]
+        target_ys = ys[targets]
+
+        print(np.count_nonzero(targets))
+
+        res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
+
+        self.assertEqual(np.count_nonzero(np.sort(res_xs) - np.sort(target_xs)), 0)
+        self.assertEqual(np.count_nonzero(np.sort(res_ys) - np.sort(target_ys)), 0)
+'''
 
 if __name__ == '__main__':
     unittest.main()

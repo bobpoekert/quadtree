@@ -1,0 +1,4 @@
+*.so
+py_quadtree.c
+build/
+*.pyc

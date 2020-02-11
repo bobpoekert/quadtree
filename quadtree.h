@@ -10,7 +10,7 @@ typedef uint64_t qt_Zpoint;
 
 typedef struct qt_Tree {
     size_t length;
-    size_t allocated_size;
+    size_t allocated_length;
     qt_Zpoint *buffer;
 } qt_Tree;
 
@@ -21,6 +21,7 @@ void qt_free(qt_Tree tree);
 
 /* compute Z-order curve value for coords */
 qt_Zpoint qt_zpoint(uint32_t x, uint32_t y);
+void qt_zpoint_decode(qt_Zpoint z, uint32_t *x, uint32_t *y);
 
 /* lookup point. returns index into tree buffer */
 size_t qt_zlookup(qt_Tree tree, qt_Zpoint targat);
@@ -56,3 +57,11 @@ void qt_points_bbox(qt_Tree tree,
     uint32_t min_x, uint32_t min_y,
     uint32_t max_x, uint32_t max_y,
     uint32_t **res_xs, uint32_t **res_ys);
+
+/* finds all the points within radius of the given center point 
+ returns zero on success and a negative value on error.
+ -1 indicates out of memory
+ */
+int qt_point_radius(qt_Tree tree,
+    uint32_t center_x, uint32_t center_y, uint32_t radius,
+    uint32_t **res_xs, uint32_t **res_ys, size_t *res_length);

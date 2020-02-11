@@ -8,5 +8,8 @@ setup(name='py_quadtree',
         ext_modules=cythonize([
             Extension('py_quadtree', ['py_quadtree.pyx'],
                 include_dirs=[numpy.get_include()],
-                #extra_compile_args=['-DQT_MBMI2', '-mbmi2']
+                extra_compile_args=[
+                    '-lm',
+                    #'-DQT_MBMI2', '-mbmi2'
+                    ]
                 )]))
