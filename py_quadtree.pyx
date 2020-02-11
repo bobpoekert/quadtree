@@ -28,6 +28,15 @@ cdef extern from "quadtree.c":
             uint32_t center_x, uint32_t center_y, uint32_t radius,
             uint32_t **res_xs, uint32_t **res_ys, size_t *res_length);
 
+    void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer)
+
+def radix_sort(np.ndarray[np.uint64_t, ndim=1, mode='c'] inp):
+    cdef length = inp.shape[0]
+    cdef uint64_t *scratch = <uint64_t *> malloc(sizeof(uint64_t) * length)
+    if scratch == NULL:
+        raise MemoryError
+    bucket_sort(length, &inp[0], scratch)
+    free(scratch)
 
 def pack_zpoints(
         np.ndarray[np.uint32_t, ndim=1, mode='c'] xs,
@@ -61,6 +70,8 @@ def unpack_zpoints(np.ndarray[np.uint64_t, ndim=1, mode='c'] points):
 
     return (xs, ys)
 
+
+
 cdef class Quadtree:
 
     cdef qt_Tree tree
@@ -78,6 +89,22 @@ cdef class Quadtree:
             raise IndexError
         else:
             return res
+
+    def indexes(self,
+            np.ndarray[np.uint32_t, ndim=1, mode='c'] xs,
+            np.ndarray[np.uint32_t, ndim=1, mode='c'] ys):
+
+        cdef np.ndarray[np.int64_t, ndim=1, mode='c'] idxes = np.empty(
+                (xs.shape[0],), dtype=np.int64)
+
+        cdef uint32_t x
+        cdef uint32_t y
+        for i in range(xs.shape[0]):
+            x = xs[i]
+            y = ys[i]
+            idxes[i] = qt_lookup(self.tree, x, y)
+
+        return idxes
 
     def insert(self, uint32_t x, uint32_t y):
         cdef ssize_t res = qt_insert(&self.tree, x, y)

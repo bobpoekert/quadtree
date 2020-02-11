@@ -162,8 +162,6 @@ void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer)
         front_buffer = s;
     }
 
-    memcpy(scratch_buffer, buffer, sizeof(uint64_t) * buffer_size);
-
 }
 
 size_t riffle_merge(
@@ -220,7 +218,7 @@ int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
             free(scratch_buffer);
             return -1;
         }
-        res_length = riffle_merge(tree->length, tree->buffer, inp_length, scratch_buffer, res);
+        res_length = riffle_merge(tree->length, tree->buffer, inp_length, inp, res);
         res = realloc(res, res_length * sizeof(uint64_t));
         tree->length = res_length;
         tree->allocated_length = res_length;
@@ -230,7 +228,8 @@ int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
         return 0;
     } else {
         if (tree->allocated_length > 0) free(tree->buffer);
-        tree->buffer = scratch_buffer;
+        tree->buffer = malloc(sizeof(qt_Zpoint) * inp_length);
+        memcpy(tree->buffer, inp, sizeof(qt_Zpoint) * inp_length);
         tree->length = inp_length;
         tree->allocated_length = inp_length;
         return 0;

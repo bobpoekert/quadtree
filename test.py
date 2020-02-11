@@ -37,7 +37,12 @@ test_data = (
 def generate_points():
     return test_data
 
-class TestZcurve(unittest.TestCase):
+class TestCase(unittest.TestCase):
+
+    def assertArrayZero(self, arr):
+        self.assertEqual(np.count_nonzero(arr), 0)
+
+class TestZcurve(TestCase):
 
     def test_naive_roundtrip(self):
         xs, ys = generate_points()
@@ -45,8 +50,8 @@ class TestZcurve(unittest.TestCase):
         packed = naive_interleave(xs, ys)
         xs_p, ys_p = naive_deinterleave(packed)
 
-        self.assertEqual(np.count_nonzero(xs_p - xs), 0)
-        self.assertEqual(np.count_nonzero(ys_p - ys), 0)
+        self.assertArrayZero(xs_p - xs)
+        self.assertArrayZero(ys_p - ys)
 
     def test_naive(self):
         xs, ys = generate_points()
@@ -57,7 +62,7 @@ class TestZcurve(unittest.TestCase):
         self.assertEqual(n_res.dtype, res.dtype)
         self.assertEqual(n_res.shape, res.shape)
 
-        self.assertEqual(np.count_nonzero(n_res - res), 0)
+        self.assertArrayZero(n_res - res)
 
     def test_naive_unpack(self):
         xs, ys = generate_points()
@@ -65,8 +70,8 @@ class TestZcurve(unittest.TestCase):
         packed = qt.pack_zpoints(xs, ys)
         r_xs, r_ys = naive_deinterleave(packed)
 
-        self.assertEqual(np.count_nonzero(r_xs - xs), 0)
-        self.assertEqual(np.count_nonzero(r_ys - ys), 0)
+        self.assertArrayZero(r_xs - xs)
+        self.assertArrayZero(r_ys - ys)
 
     def test_naive_pack(self):
         xs, ys = generate_points()
@@ -74,8 +79,8 @@ class TestZcurve(unittest.TestCase):
         packed = naive_interleave(xs, ys)
         r_xs, r_ys = qt.unpack_zpoints(packed)
 
-        self.assertEqual(np.count_nonzero(r_xs - xs), 0)
-        self.assertEqual(np.count_nonzero(r_ys - ys), 0)
+        self.assertArrayZero(r_xs - xs)
+        self.assertArrayZero(r_ys - ys)
 
     def test_roundtrip(self):
         xs, ys = generate_points()
@@ -87,10 +92,10 @@ class TestZcurve(unittest.TestCase):
         self.assertEqual(xs.dtype, res_xs.dtype)
         self.assertEqual(xs.shape, res_xs.shape)
 
-        self.assertEqual(np.count_nonzero(res_xs - xs), 0)
-        self.assertEqual(np.count_nonzero(res_ys - ys), 0)
+        self.assertArrayZero(res_xs - xs)
+        self.assertArrayZero(res_ys - ys)
 
-class TestSort(unittest.TestCase):
+class TestSort(TestCase):
 
     def test_init(self):
         xs, ys = generate_points()
@@ -103,10 +108,27 @@ class TestSort(unittest.TestCase):
         buf = tree.get_buffer()
 
         self.assertEqual(buf.shape, zs.shape)
-        self.assertEqual(np.count_nonzero(buf[:-1] > buf[1:]), 0)
+        self.assertArrayZero(buf[:-1] > buf[1:])
+        self.assertArrayZero(np.sort(zs) - buf)
+
+    def test_lookup(self):
+        xs, ys = generate_points()
+
+        zs = qt.pack_zpoints(xs, ys)
+        z_idxes = np.argsort(zs)
+
+        tree = qt.Quadtree()
+        tree.insert_multi(xs, ys)
+
+        self.assertArrayZero(tree.get_buffer() - np.sort(zs))
+
+        res_idxes = tree.indexes(xs, ys)
+
+
+        self.assertArrayZero(z_idxes - res_idxes)
 
 '''
-class TestPointRadius(unittest.TestCase):
+class TestPointRadius(TestCase):
 
     def test_point_radius(self):
 
@@ -129,9 +151,9 @@ class TestPointRadius(unittest.TestCase):
 
         res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
-        self.assertEqual(np.count_nonzero(np.sort(res_xs) - np.sort(target_xs)), 0)
-        self.assertEqual(np.count_nonzero(np.sort(res_ys) - np.sort(target_ys)), 0)
-'''
+        self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
+        self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
+        '''
 
 if __name__ == '__main__':
     unittest.main()
