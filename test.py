@@ -113,6 +113,8 @@ class TestSort(TestCase):
 
     def test_lookup(self):
         xs, ys = generate_points()
+        xs = xs - 1
+        ys = ys - 1
 
         zs = qt.pack_zpoints(xs, ys)
 
@@ -124,9 +126,12 @@ class TestSort(TestCase):
         res_idxes = tree.indexes(xs, ys)
 
         self.assertArrayZero(buf[res_idxes] - zs)
+        self.assertArrayZero(np.sort(zs)[res_idxes] - zs)
+
+        with self.assertRaises(IndexError):
+            bad_idx = tree.index(2**32-1, 2**32-1)
 
 
-'''
 class TestPointRadius(TestCase):
 
     def test_point_radius(self):
@@ -146,13 +151,10 @@ class TestPointRadius(TestCase):
         target_xs = xs[targets]
         target_ys = ys[targets]
 
-        print(np.count_nonzero(targets))
-
         res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
         self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
         self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
-        '''
 
 if __name__ == '__main__':
     unittest.main()

@@ -271,9 +271,9 @@ int qt_insert_multi(qt_Tree *tree, size_t input_length, uint32_t *xs, uint32_t *
 
 inline size_t qt_longest_common_prefix(qt_Zpoint a, qt_Zpoint b, qt_Zpoint *res_mask) {
     uint64_t mask = -1;
-    size_t length = 0;
-    while (length < 64 && (a & mask) != (b & mask)) {
-        length++;
+    size_t length = 64;
+    while (length > 0 && (a & mask) != (b & mask)) {
+        length--;
         mask <<= 1;
     }
     *res_mask = mask;
@@ -284,12 +284,19 @@ int qt_point_radius(qt_Tree tree,
     uint32_t center_x, uint32_t center_y, uint32_t radius,
     uint32_t **res_xs, uint32_t **res_ys, size_t *res_length) {
 
+    if (tree.length < 1) {
+        *res_length = 0;
+        *res_xs = NULL;
+        *res_ys = NULL;
+        return 0;
+    }
+
     // outer bbox is the smallest square our circle fits inside
     // inner bbox is the largest square that fits inside our circle
     // we only have to actually calculate distance for points that lie within outer minus inner
 
     uint32_t outer_bbox_size = radius * 2;
-    uint32_t inner_bbox_size = (uint32_t) (sqrt(2 * radius) / 2);
+    uint32_t inner_bbox_size = radius * 1.4142135623730951;
 
     qt_Zpoint outer_point_a = qt_zpoint(center_x - outer_bbox_size, center_y - outer_bbox_size);
     qt_Zpoint outer_point_b = qt_zpoint(center_x + outer_bbox_size, center_y - outer_bbox_size);
@@ -321,12 +328,24 @@ int qt_point_radius(qt_Tree tree,
     outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
     outer_inter_prefix_mask &= local_prefix_mask;
 
-    qt_Zpoint outer_point_min = outer_point_a & outer_inter_prefix_mask;
-    qt_Zpoint outer_point_max = outer_point_a | ~outer_inter_prefix_mask;
+    printf("%ld\n", outer_inter_prefix_length);
 
-    // all of our result points lie within this range
-    size_t outer_min_idx = qt_zlookup(tree, outer_point_min);
-    size_t outer_max_idx = qt_zlookup(tree, outer_point_max);
+    size_t outer_min_idx;
+    size_t outer_max_idx;
+
+    if (outer_inter_prefix_length > 0) {
+
+        qt_Zpoint outer_point_min = outer_point_a & outer_inter_prefix_mask;
+        qt_Zpoint outer_point_max = outer_point_a | ~outer_inter_prefix_mask;
+
+        // all of our result points lie within this range
+        outer_min_idx = qt_zlookup(tree, outer_point_min);
+        outer_max_idx = qt_zlookup(tree, outer_point_max);
+
+    } else {
+        outer_min_idx = 0;
+        outer_max_idx = tree.length-1;
+    }
 
     uint32_t *res_xs_buf = malloc(sizeof(uint32_t) * (outer_max_idx - outer_min_idx));
     if (!res_xs_buf) return -1;
@@ -340,18 +359,28 @@ int qt_point_radius(qt_Tree tree,
     uint32_t inner_min_x = center_x - inner_bbox_size;
     uint32_t inner_max_y = center_y + inner_bbox_size;
     uint32_t inner_min_y = center_y - inner_bbox_size;
+    
+    uint32_t outer_max_x = center_x + outer_bbox_size;
+    uint32_t outer_min_x = center_x - outer_bbox_size;
+    uint32_t outer_max_y = center_y + outer_bbox_size;
+    uint32_t outer_min_y = center_y - outer_bbox_size;
 
     size_t _res_length = 0;
     size_t buf_cursor = outer_min_idx;
-    for (; buf_cursor < outer_max_idx; buf_cursor++) {
+    for (; buf_cursor <= outer_max_idx; buf_cursor++) {
         uint32_t x, y;
         int64_t dx, dy;
         qt_Zpoint inp = tree.buffer[buf_cursor];
         qt_zpoint_decode(inp, &x, &y);
+
+        if (x > outer_max_x || x < outer_min_x ||
+            y > outer_max_y || y < outer_min_y) continue;
+
         dx = x - center_x;
         dy = y - center_y;
 
-        if ((x >= inner_min_x && x <= inner_max_x && y >= inner_min_y && y <= inner_max_y) ||
+        if ((x >= inner_min_x && x <= inner_max_x &&
+             y >= inner_min_y && y <= inner_max_y) ||
             (sqrt(dx*dx + dy*dy) <= radius)) {
 
             res_xs_buf[_res_length] = x;
@@ -362,8 +391,20 @@ int qt_point_radius(qt_Tree tree,
 
     }
 
-    res_xs_buf = realloc(res_xs_buf, sizeof(uint32_t) * _res_length);
-    res_ys_buf = realloc(res_ys_buf, sizeof(uint32_t) * _res_length);
+    if (_res_length > 0) {
+
+        res_xs_buf = realloc(res_xs_buf, sizeof(uint32_t) * _res_length);
+        res_ys_buf = realloc(res_ys_buf, sizeof(uint32_t) * _res_length);
+
+    } else {
+
+        free(res_xs_buf);
+        res_xs_buf = NULL;
+
+        free(res_ys_buf);
+        res_ys_buf = NULL;
+
+    }
 
     *res_xs = res_xs_buf;
     *res_ys = res_ys_buf;

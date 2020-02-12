@@ -84,7 +84,7 @@ cdef class Quadtree:
         qt_free(self.tree)
 
     def index(self, uint32_t x, uint32_t y):
-        cdef size_t res = qt_lookup(self.tree, x, y)
+        cdef ssize_t res = qt_lookup(self.tree, x, y)
         if res < 0:
             raise IndexError
         else:
@@ -161,8 +161,13 @@ cdef class Quadtree:
         elif retval < 0:
             raise Exception
 
-        cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] arr_xs = np.empty((res_length,), dtype=np.uint32)
-        cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] arr_ys = np.empty((res_length,), dtype=np.uint32)
+        if res_length < 1:
+            return ([], [])
+
+        cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] arr_xs = np.empty(
+                (res_length,), dtype=np.uint32)
+        cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] arr_ys = np.empty(
+                (res_length,), dtype=np.uint32)
 
         memcpy(&arr_xs[0], res_xs, sizeof(uint32_t) * res_length)
         memcpy(&arr_ys[0], res_ys, sizeof(uint32_t) * res_length)
