@@ -2,7 +2,7 @@ import numpy as np
 import py_quadtree as qt
 import time
 
-size = 10**8
+size = 10**6
 
 test_data = np.random.randint(2**64, size=(size,), dtype=np.uint64)
 

@@ -9,7 +9,7 @@ setup(name='py_quadtree',
             Extension('py_quadtree', ['py_quadtree.pyx'],
                 include_dirs=[numpy.get_include()],
                 extra_compile_args=[
-                    '-lm', '-Ofast', '-finline-functions',
+                    '-lm', 
                     #'-DQT_MBMI2', '-mbmi2'
                     ]
                 )]))

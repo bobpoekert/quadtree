@@ -73,19 +73,19 @@ size_t qt_zlookup(qt_Tree tree, qt_Zpoint target) {
     /* binary search */
     size_t left = 0;
     size_t right = tree.length - 1;
-    size_t cursor = (right + left) / 2;
+    size_t cursor;
 
     while(left <= right) {
+        cursor = (left + right) / 2;
         qt_Zpoint pivot = tree.buffer[cursor];
-        if (pivot == target) {
-            return cursor;
-        } else if (pivot < target) {
+        if (pivot < target) {
             left = cursor + 1;
-        } else {
+        } else if (pivot > target) {
             right = cursor - 1;
+        } else {
+            return cursor;
         }
 
-        cursor = (left + right) / 2;
     }
 
     return cursor;
@@ -95,7 +95,11 @@ ssize_t qt_lookup(qt_Tree tree, uint32_t x, uint32_t y) {
     if (tree.length < 1) return -1;
     qt_Zpoint target = qt_zpoint(x, y);
     size_t res = qt_zlookup(tree, target);
-    return (tree.buffer[res] == target) ? res : -1;
+    if (tree.buffer[res] == target) {
+        return (ssize_t) res; 
+    } else {
+        return -1;
+    }
 }
 
 int qt_extend(qt_Tree *tree) {

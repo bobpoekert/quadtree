@@ -115,17 +115,16 @@ class TestSort(TestCase):
         xs, ys = generate_points()
 
         zs = qt.pack_zpoints(xs, ys)
-        z_idxes = np.argsort(zs)
 
         tree = qt.Quadtree()
         tree.insert_multi(xs, ys)
 
-        self.assertArrayZero(tree.get_buffer() - np.sort(zs))
+        buf = tree.get_buffer()
 
         res_idxes = tree.indexes(xs, ys)
 
+        self.assertArrayZero(buf[res_idxes] - zs)
 
-        self.assertArrayZero(z_idxes - res_idxes)
 
 '''
 class TestPointRadius(TestCase):

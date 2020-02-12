@@ -94,15 +94,19 @@ cdef class Quadtree:
             np.ndarray[np.uint32_t, ndim=1, mode='c'] xs,
             np.ndarray[np.uint32_t, ndim=1, mode='c'] ys):
 
-        cdef np.ndarray[np.int64_t, ndim=1, mode='c'] idxes = np.empty(
+        assert xs.shape[0] == ys.shape[0]
+
+        cdef np.ndarray[np.int64_t, ndim=1, mode='c'] idxes = np.zeros(
                 (xs.shape[0],), dtype=np.int64)
 
         cdef uint32_t x
         cdef uint32_t y
-        for i in range(xs.shape[0]):
+        cdef size_t i = 0
+        while i < xs.shape[0]:
             x = xs[i]
             y = ys[i]
-            idxes[i] = qt_lookup(self.tree, x, y)
+            idxes[i] = <int64_t> qt_lookup(self.tree, x, y)
+            i += 1
 
         return idxes
 
