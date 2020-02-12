@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <stdio.h>
+
 #include "quadtree.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -270,7 +272,7 @@ int qt_insert_multi(qt_Tree *tree, size_t input_length, uint32_t *xs, uint32_t *
 }
 
 inline size_t qt_longest_common_prefix(qt_Zpoint a, qt_Zpoint b, qt_Zpoint *res_mask) {
-    uint64_t mask = -1;
+    uint64_t mask = ~0;
     size_t length = 64;
     while (length > 0 && (a & mask) != (b & mask)) {
         length--;
@@ -284,7 +286,7 @@ int qt_point_radius(qt_Tree tree,
     uint32_t center_x, uint32_t center_y, uint32_t radius,
     uint32_t **res_xs, uint32_t **res_ys, size_t *res_length) {
 
-    if (tree.length < 1) {
+    if (tree.length < 1 || radius < 1) {
         *res_length = 0;
         *res_xs = NULL;
         *res_ys = NULL;
@@ -297,46 +299,49 @@ int qt_point_radius(qt_Tree tree,
 
     uint32_t outer_bbox_size = radius * 2;
     uint32_t inner_bbox_size = radius * 1.4142135623730951;
-
-    qt_Zpoint outer_point_a = qt_zpoint(center_x - outer_bbox_size, center_y - outer_bbox_size);
-    qt_Zpoint outer_point_b = qt_zpoint(center_x + outer_bbox_size, center_y - outer_bbox_size);
-    qt_Zpoint outer_point_c = qt_zpoint(center_x + outer_bbox_size, center_y + outer_bbox_size);
-    qt_Zpoint outer_point_d = qt_zpoint(center_x - outer_bbox_size, center_y + outer_bbox_size);
     
-    size_t outer_inter_prefix_length = 0;
-    uint64_t outer_inter_prefix_mask = -1;
+    uint32_t inner_bbox_size_2 = inner_bbox_size / 2;
+    uint32_t outer_bbox_size_2 = outer_bbox_size / 2;
+
+    qt_Zpoint corner_points[] = {
+        qt_zpoint(
+                center_x - outer_bbox_size_2, center_y - outer_bbox_size_2),
+        qt_zpoint(
+                center_x + outer_bbox_size_2, center_y - outer_bbox_size_2),
+        qt_zpoint(
+                center_x + outer_bbox_size_2, center_y + outer_bbox_size_2),
+        qt_zpoint(
+                center_x - outer_bbox_size_2, center_y + outer_bbox_size_2)
+
+    };
+
+    
+    uint8_t outer_inter_prefix_length = 64;
+    uint64_t outer_inter_prefix_mask = ~0;
     uint64_t local_prefix_mask;
     size_t local_prefix_length;
 
     // longest common prefix of morton codes is lowest common ancestor in a quadtree
-    local_prefix_length = qt_longest_common_prefix(outer_point_a, outer_point_b, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
-    local_prefix_length = qt_longest_common_prefix(outer_point_a, outer_point_c, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
-    local_prefix_length = qt_longest_common_prefix(outer_point_a, outer_point_d, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
-    local_prefix_length = qt_longest_common_prefix(outer_point_b, outer_point_c, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
-    local_prefix_length = qt_longest_common_prefix(outer_point_b, outer_point_d, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
-    local_prefix_length = qt_longest_common_prefix(outer_point_c, outer_point_d, &local_prefix_mask);
-    outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
-    outer_inter_prefix_mask &= local_prefix_mask;
+    for (uint8_t outer_i=0; outer_i < 4; outer_i++) {
+        for (uint8_t inner_i = 0; inner_i < 4; inner_i++) {
+            local_prefix_length = qt_longest_common_prefix(
+                    corner_points[outer_i], corner_points[inner_i],
+                    &local_prefix_mask);
+            outer_inter_prefix_length = MIN(outer_inter_prefix_length, local_prefix_length);
+            outer_inter_prefix_mask &= local_prefix_mask;
+        }
+    }
 
-    printf("%ld\n", outer_inter_prefix_length);
+    printf("%d %d %d prefix length: %d\n", 
+            center_x, center_y, radius, outer_inter_prefix_length);
 
     size_t outer_min_idx;
     size_t outer_max_idx;
 
     if (outer_inter_prefix_length > 0) {
 
-        qt_Zpoint outer_point_min = outer_point_a & outer_inter_prefix_mask;
-        qt_Zpoint outer_point_max = outer_point_a | ~outer_inter_prefix_mask;
+        qt_Zpoint outer_point_min = corner_points[0] & outer_inter_prefix_mask;
+        qt_Zpoint outer_point_max = corner_points[0] | ~outer_inter_prefix_mask;
 
         // all of our result points lie within this range
         outer_min_idx = qt_zlookup(tree, outer_point_min);
@@ -355,21 +360,23 @@ int qt_point_radius(qt_Tree tree,
         return -1;
     }
 
-    uint32_t inner_max_x = center_x + inner_bbox_size;
-    uint32_t inner_min_x = center_x - inner_bbox_size;
-    uint32_t inner_max_y = center_y + inner_bbox_size;
-    uint32_t inner_min_y = center_y - inner_bbox_size;
+
+    uint32_t inner_max_x = center_x + inner_bbox_size_2;
+    uint32_t inner_min_x = center_x - inner_bbox_size_2;
+    uint32_t inner_max_y = center_y + inner_bbox_size_2;
+    uint32_t inner_min_y = center_y - inner_bbox_size_2;
     
-    uint32_t outer_max_x = center_x + outer_bbox_size;
-    uint32_t outer_min_x = center_x - outer_bbox_size;
-    uint32_t outer_max_y = center_y + outer_bbox_size;
-    uint32_t outer_min_y = center_y - outer_bbox_size;
+    uint32_t outer_max_x = center_x + outer_bbox_size_2;
+    uint32_t outer_min_x = center_x - outer_bbox_size_2;
+    uint32_t outer_max_y = center_y + outer_bbox_size_2;
+    uint32_t outer_min_y = center_y - outer_bbox_size_2;
 
     size_t _res_length = 0;
     size_t buf_cursor = outer_min_idx;
+    printf("%lu, %lu\n", outer_min_idx, outer_max_idx);
     for (; buf_cursor <= outer_max_idx; buf_cursor++) {
         uint32_t x, y;
-        int64_t dx, dy;
+        double dx, dy;
         qt_Zpoint inp = tree.buffer[buf_cursor];
         qt_zpoint_decode(inp, &x, &y);
 

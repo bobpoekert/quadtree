@@ -146,7 +146,7 @@ cdef class Quadtree:
 
     def get_buffer(self):
         cdef np.ndarray[np.uint64_t, ndim=1, mode='c'] res = np.empty(
-                (self.tree.length), dtype=np.uint64)
+                (self.tree.length,), dtype=np.uint64)
         memcpy(&res[0], self.tree.buffer, sizeof(uint64_t) * self.tree.length)
         return res
 

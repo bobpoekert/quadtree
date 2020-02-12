@@ -34,8 +34,16 @@ test_data = (
             np.random.randint(2**32, size=(10**5,), dtype=np.uint32),
             np.random.randint(2**32, size=(10**5,), dtype=np.uint32)
             )
-def generate_points():
-    return test_data
+
+test_data = {}
+
+def generate_points(_min=0, _max=2**32):
+    if (_min, _max) not in test_data:
+        test_data[(_min, _max)] = (
+            np.random.randint(_min, _max, size=(10**5,), dtype=np.uint32),
+            np.random.randint(_min, _max, size=(10**5,), dtype=np.uint32)
+            )
+    return test_data[(_min, _max)]
 
 class TestCase(unittest.TestCase):
 
@@ -136,7 +144,7 @@ class TestPointRadius(TestCase):
 
     def test_point_radius(self):
 
-        xs, ys = generate_points()
+        xs, ys = generate_points(0, 2*17)
 
         tree = qt.Quadtree()
         tree.insert_multi(xs, ys)
@@ -144,12 +152,15 @@ class TestPointRadius(TestCase):
         center_x = np.mean(xs)
         center_y = np.mean(ys)
 
-        radius = (np.max(xs) - np.min(xs)) / 4
+        radius = (np.max(xs) - np.min(xs)) / 10
+        print(radius)
 
         distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
         targets = distances <= radius
         target_xs = xs[targets]
         target_ys = ys[targets]
+
+        print(np.count_nonzero(targets))
 
         res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
