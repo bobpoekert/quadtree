@@ -25,7 +25,7 @@ cdef extern from "quadtree.c":
     int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp)
 
     int qt_point_radius(qt_Tree tree,
-            uint32_t center_x, uint32_t center_y, uint32_t radius,
+            uint32_t center_x, uint32_t center_y, double radius,
             uint32_t **res_xs, uint32_t **res_ys, size_t *res_length);
 
     void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer)
@@ -101,12 +101,12 @@ cdef class Quadtree:
 
         cdef uint32_t x
         cdef uint32_t y
-        cdef size_t i = 0
-        while i < xs.shape[0]:
+        cdef ssize_t i = xs.shape[0] - 1
+        while i >= 0:
             x = xs[i]
             y = ys[i]
             idxes[i] = <int64_t> qt_lookup(self.tree, x, y)
-            i += 1
+            i -= 1
 
         return idxes
 
@@ -153,8 +153,12 @@ cdef class Quadtree:
     def point_radius(self, x, y, radius):
         cdef uint32_t *res_xs
         cdef uint32_t *res_ys
+        cdef uint32_t center_x = x
+        cdef uint32_t center_y = y
+        cdef double r = radius
         cdef size_t res_length
-        cdef int retval = qt_point_radius(self.tree, x, y, radius,
+        cdef int retval = qt_point_radius(self.tree,
+                center_x, center_y, r,
                 &res_xs, &res_ys, &res_length)
         if retval == -1:
             raise MemoryError
@@ -162,7 +166,7 @@ cdef class Quadtree:
             raise Exception
 
         if res_length < 1:
-            return ([], [])
+            return (np.array([]), np.array([]))
 
         cdef np.ndarray[np.uint32_t, ndim=1, mode='c'] arr_xs = np.empty(
                 (res_length,), dtype=np.uint32)

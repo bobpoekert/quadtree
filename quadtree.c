@@ -283,10 +283,12 @@ inline size_t qt_longest_common_prefix(qt_Zpoint a, qt_Zpoint b, qt_Zpoint *res_
 }
 
 int qt_point_radius(qt_Tree tree,
-    uint32_t center_x, uint32_t center_y, uint32_t radius,
+    uint32_t center_x, uint32_t center_y, double radius,
     uint32_t **res_xs, uint32_t **res_ys, size_t *res_length) {
 
-    if (tree.length < 1 || radius < 1) {
+    printf("%lu, %f\n", tree.length, radius);
+
+    if (tree.length < 1) {
         *res_length = 0;
         *res_xs = NULL;
         *res_ys = NULL;
@@ -297,21 +299,21 @@ int qt_point_radius(qt_Tree tree,
     // inner bbox is the largest square that fits inside our circle
     // we only have to actually calculate distance for points that lie within outer minus inner
 
-    uint32_t outer_bbox_size = radius * 2;
-    uint32_t inner_bbox_size = radius * 1.4142135623730951;
+    double outer_bbox_size = radius * 2.;
+    double inner_bbox_size = radius * 1.4142135623730951;
     
-    uint32_t inner_bbox_size_2 = inner_bbox_size / 2;
-    uint32_t outer_bbox_size_2 = outer_bbox_size / 2;
+    double inner_bbox_size_2 = inner_bbox_size / 2.;
+    double outer_bbox_size_2 = outer_bbox_size / 2.;
 
     qt_Zpoint corner_points[] = {
         qt_zpoint(
-                center_x - outer_bbox_size_2, center_y - outer_bbox_size_2),
+                (uint32_t) (center_x - outer_bbox_size_2), (uint32_t) (center_y - outer_bbox_size_2)),
         qt_zpoint(
-                center_x + outer_bbox_size_2, center_y - outer_bbox_size_2),
+                (uint32_t) (center_x + outer_bbox_size_2), (uint32_t) (center_y - outer_bbox_size_2)),
         qt_zpoint(
-                center_x + outer_bbox_size_2, center_y + outer_bbox_size_2),
+                (uint32_t) (center_x + outer_bbox_size_2), (uint32_t) (center_y + outer_bbox_size_2)),
         qt_zpoint(
-                center_x - outer_bbox_size_2, center_y + outer_bbox_size_2)
+                (uint32_t) (center_x - outer_bbox_size_2), (uint32_t) (center_y + outer_bbox_size_2))
 
     };
 
@@ -383,11 +385,11 @@ int qt_point_radius(qt_Tree tree,
         if (x > outer_max_x || x < outer_min_x ||
             y > outer_max_y || y < outer_min_y) continue;
 
-        dx = x - center_x;
-        dy = y - center_y;
+        dx = (double) (x - center_x);
+        dy = (double) (y - center_y);
 
-        if ((x >= inner_min_x && x <= inner_max_x &&
-             y >= inner_min_y && y <= inner_max_y) ||
+        if ((x > inner_min_x && x < inner_max_x &&
+             y > inner_min_y && y < inner_max_y) ||
             (sqrt(dx*dx + dy*dy) <= radius)) {
 
             res_xs_buf[_res_length] = x;

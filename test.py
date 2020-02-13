@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import py_quadtree as qt
+from random import randint
 
 def naive_interleave(xs, ys):
     assert xs.shape == ys.shape
@@ -149,23 +150,28 @@ class TestPointRadius(TestCase):
         tree = qt.Quadtree()
         tree.insert_multi(xs, ys)
 
-        center_x = np.mean(xs)
-        center_y = np.mean(ys)
+        while 1:
+            center_x = randint(np.min(xs), np.max(xs))
+            center_y = randint(np.min(ys), np.max(ys))
 
-        radius = (np.max(xs) - np.min(xs)) / 10
-        print(radius)
+            radius = (np.max(xs) - np.min(xs)) / 50
 
-        distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
-        targets = distances <= radius
-        target_xs = xs[targets]
-        target_ys = ys[targets]
+            distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
+            targets = distances <= radius
+            target_xs = xs[targets]
+            target_ys = ys[targets]
 
-        print(np.count_nonzero(targets))
 
-        res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
+            res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
-        self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
-        self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
+            print(res_xs.shape[0] - target_xs.shape[0],
+                    res_ys.shape[0] - target_ys.shape[0])
+
+            self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
+            self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
+
+            if res_xs.shape[0] > 0:
+                break
 
 if __name__ == '__main__':
     unittest.main()

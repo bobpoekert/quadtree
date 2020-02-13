@@ -63,5 +63,5 @@ void qt_points_bbox(qt_Tree tree,
  -1 indicates out of memory
  */
 int qt_point_radius(qt_Tree tree,
-    uint32_t center_x, uint32_t center_y, uint32_t radius,
+    uint32_t center_x, uint32_t center_y, double radius,
     uint32_t **res_xs, uint32_t **res_ys, size_t *res_length);
