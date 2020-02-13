@@ -31,14 +31,16 @@ def naive_deinterleave(vs):
 
     return xs, ys
 
-test_data = (
-            np.random.randint(2**32, size=(10**5,), dtype=np.uint32),
-            np.random.randint(2**32, size=(10**5,), dtype=np.uint32)
-            )
-
 test_data = {}
 
-def generate_points(_min=0, _max=2**32):
+def generate_points(_min=0, _max=2**32, cache=True):
+    if cache is False:
+        return (
+            np.random.randint(_min, _max, size=(10**5,), dtype=np.uint32),
+            np.random.randint(_min, _max, size=(10**5,), dtype=np.uint32)
+            )
+
+
     if (_min, _max) not in test_data:
         test_data[(_min, _max)] = (
             np.random.randint(_min, _max, size=(10**5,), dtype=np.uint32),
@@ -145,33 +147,35 @@ class TestPointRadius(TestCase):
 
     def test_point_radius(self):
 
-        xs, ys = generate_points(0, 2*17)
+        for i in range(1000):
+            xs, ys = generate_points(0, 2*17, cache=False)
 
-        tree = qt.Quadtree()
-        tree.insert_multi(xs, ys)
+            tree = qt.Quadtree()
+            tree.insert_multi(xs, ys)
 
-        while 1:
-            center_x = randint(np.min(xs), np.max(xs))
-            center_y = randint(np.min(ys), np.max(ys))
+            while 1:
+                center_x = randint(np.min(xs), np.max(xs))
+                center_y = randint(np.min(ys), np.max(ys))
 
-            radius = (np.max(xs) - np.min(xs)) / 50
+                radius = (np.max(xs) - np.min(xs)) / 40
 
-            distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
-            targets = distances <= radius
-            target_xs = xs[targets]
-            target_ys = ys[targets]
+                distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
+                targets = distances <= radius
+                target_xs = xs[targets]
+                target_ys = ys[targets]
 
 
-            res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
+                res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
-            print(res_xs.shape[0] - target_xs.shape[0],
-                    res_ys.shape[0] - target_ys.shape[0])
+                print(res_xs.shape[0] - target_xs.shape[0],
+                        res_ys.shape[0] - target_ys.shape[0],
+                        res_xs.shape[0])
 
-            self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
-            self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
+                self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
+                self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
 
-            if res_xs.shape[0] > 0:
-                break
+                if res_xs.shape[0] > 0:
+                    break
 
 if __name__ == '__main__':
     unittest.main()

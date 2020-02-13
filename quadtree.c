@@ -271,9 +271,9 @@ int qt_insert_multi(qt_Tree *tree, size_t input_length, uint32_t *xs, uint32_t *
     return res;
 }
 
-inline size_t qt_longest_common_prefix(qt_Zpoint a, qt_Zpoint b, qt_Zpoint *res_mask) {
+inline uint8_t qt_longest_common_prefix(qt_Zpoint a, qt_Zpoint b, qt_Zpoint *res_mask) {
     uint64_t mask = ~0;
-    size_t length = 64;
+    uint8_t length = 64;
     while (length > 0 && (a & mask) != (b & mask)) {
         length--;
         mask <<= 1;
@@ -321,7 +321,7 @@ int qt_point_radius(qt_Tree tree,
     uint8_t outer_inter_prefix_length = 64;
     uint64_t outer_inter_prefix_mask = ~0;
     uint64_t local_prefix_mask;
-    size_t local_prefix_length;
+    uint8_t local_prefix_length;
 
     // longest common prefix of morton codes is lowest common ancestor in a quadtree
     for (uint8_t outer_i=0; outer_i < 4; outer_i++) {
@@ -334,8 +334,8 @@ int qt_point_radius(qt_Tree tree,
         }
     }
 
-    printf("%d %d %d prefix length: %d\n", 
-            center_x, center_y, radius, outer_inter_prefix_length);
+    printf("%d %d %d prefix length: %d,%d\n", 
+            center_x, center_y, radius, local_prefix_length, outer_inter_prefix_length);
 
     size_t outer_min_idx;
     size_t outer_max_idx;
@@ -343,7 +343,9 @@ int qt_point_radius(qt_Tree tree,
     if (outer_inter_prefix_length > 0) {
 
         qt_Zpoint outer_point_min = corner_points[0] & outer_inter_prefix_mask;
+        if (outer_point_min > 0) outer_point_min--;
         qt_Zpoint outer_point_max = corner_points[0] | ~outer_inter_prefix_mask;
+        if (outer_point_max < tree.length-1) outer_point_max++; 
 
         // all of our result points lie within this range
         outer_min_idx = qt_zlookup(tree, outer_point_min);
@@ -385,8 +387,8 @@ int qt_point_radius(qt_Tree tree,
         if (x > outer_max_x || x < outer_min_x ||
             y > outer_max_y || y < outer_min_y) continue;
 
-        dx = (double) (x - center_x);
-        dy = (double) (y - center_y);
+        dx = x - center_x;
+        dy = y - center_y;
 
         if ((x > inner_min_x && x < inner_max_x &&
              y > inner_min_y && y < inner_max_y) ||
