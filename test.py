@@ -156,7 +156,7 @@ class TestPointRadius(TestCase):
             tree = qt.Quadtree()
             tree.insert_multi(xs, ys)
 
-            for radius in range(100):
+            for radius in range(15):
 
                 radius = 0.5 + (0.1 * radius)
 
