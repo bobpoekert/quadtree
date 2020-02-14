@@ -113,13 +113,16 @@ class TestSort(TestCase):
 
         zs = qt.pack_zpoints(xs, ys)
 
+        self.assertTrue(zs.shape[0] > 0)
+
         tree = qt.Quadtree()
         tree.insert_multi(xs, ys)
 
         buf = tree.get_buffer()
 
         self.assertEqual(buf.shape, zs.shape)
-        self.assertArrayZero(buf[:-1] > buf[1:])
+        self.assertArrayZero(buf[:-1] > buf[1:]) # sorted
+        self.assertArrayZero(buf[:-1] == buf[1:]) # no duplicates
         self.assertArrayZero(np.sort(zs) - buf)
 
     def test_lookup(self):
@@ -147,35 +150,37 @@ class TestPointRadius(TestCase):
 
     def test_point_radius(self):
 
-        for i in range(1000):
+        for i in range(100):
             xs, ys = generate_points(0, 2*17, cache=False)
 
             tree = qt.Quadtree()
             tree.insert_multi(xs, ys)
 
-            while 1:
-                center_x = randint(np.min(xs), np.max(xs))
-                center_y = randint(np.min(ys), np.max(ys))
+            for radius in range(100):
 
-                radius = (np.max(xs) - np.min(xs)) / 40
+                radius = 0.5 + (0.1 * radius)
 
-                distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
-                targets = distances <= radius
-                target_xs = xs[targets]
-                target_ys = ys[targets]
+                while 1:
+                    center_x = randint(np.min(xs), np.max(xs))
+                    center_y = randint(np.min(ys)+1, np.max(ys))
 
+                    distances = np.sqrt((xs - center_x)**2 + (ys - center_y)**2)
+                    targets = distances <= radius
+                    target_xs = xs[targets]
+                    target_ys = ys[targets]
 
-                res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
+                    res_xs, res_ys = tree.point_radius(center_x, center_y, radius)
 
-                print(res_xs.shape[0] - target_xs.shape[0],
-                        res_ys.shape[0] - target_ys.shape[0],
-                        res_xs.shape[0])
+                    if res_xs.shape[0] > 0 and res_ys.shape[0] > 0:
+                        res = np.transpose([res_xs, res_ys])
+                        target = np.transpose([target_xs, target_ys])
 
-                self.assertArrayZero(np.sort(res_xs) - np.sort(target_xs))
-                self.assertArrayZero(np.sort(res_ys) - np.sort(target_ys))
+                        res = np.unique(res, axis=0)
+                        target = np.unique(target, axis=0)
 
-                if res_xs.shape[0] > 0:
-                    break
+                        self.assertArrayZero(res - target)
+
+                        break
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,11 +6,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <stdio.h>
-
 #include "quadtree.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #ifdef QT_MBMI2
 #include <immintrin.h>
@@ -135,6 +134,29 @@ ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y) {
     return qt_zinsert(tree, qt_zpoint(x, y));
 }
 
+size_t copy_without_duplicates(size_t buffer_size, uint64_t *buffer, uint64_t *res) {
+    // buffer must be sorted
+    if (buffer_size < 1) return 0;
+    size_t res_idx = 1;
+    size_t inp_idx = 0;
+    uint64_t prev = buffer[0];
+
+    res[0] = buffer[0];
+
+    while(inp_idx < buffer_size) {
+        uint64_t cur = buffer[inp_idx];
+        if (cur != prev) {
+            res[res_idx] = buffer[inp_idx];
+            res_idx++;
+            prev = cur;
+        }
+        inp_idx++;
+    }
+
+    return res_idx;
+
+}
+
 void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer) {
     size_t bucket_offsets[16];
     size_t bucket_lengths[16];
@@ -168,6 +190,7 @@ void bucket_sort(size_t buffer_size, uint64_t *buffer, uint64_t *scratch_buffer)
         front_buffer = s;
     }
 
+
 }
 
 size_t riffle_merge(
@@ -188,16 +211,22 @@ size_t riffle_merge(
         uint64_t v_a = source_a[cursor_a];
         uint64_t v_b = source_b[cursor_b];
         if (v_a > v_b) {
-            res[cursor_res] = v_b;
-            cursor_res++;
+            if (cursor_res == 0 || res[cursor_res-1] != v_b) {
+                res[cursor_res] = v_b;
+                cursor_res++;
+            }
             cursor_b++;
         } else if (v_a < v_b) {
-            res[cursor_res] = v_a;
-            cursor_res++;
+            if (cursor_res == 0 || res[cursor_res-1] != v_a) {
+                res[cursor_res] = v_a;
+                cursor_res++;
+            }
             cursor_a++;
         } else  {
-            res[cursor_res] = v_a;
-            cursor_res++;
+            if (cursor_res == 0 || res[cursor_res-1] != v_a) {
+                res[cursor_res] = v_a;
+                cursor_res++;
+            }
             cursor_a++;
             cursor_b++;
         }
@@ -213,7 +242,6 @@ int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
     if (inp_length < 1) return 0;
     uint64_t *scratch_buffer = malloc(sizeof(uint64_t) * inp_length);
     if (!scratch_buffer) return -1;
-
 
     bucket_sort(inp_length, inp, scratch_buffer);
 
@@ -235,8 +263,8 @@ int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp) {
     } else {
         if (tree->allocated_length > 0) free(tree->buffer);
         tree->buffer = malloc(sizeof(qt_Zpoint) * inp_length);
-        memcpy(tree->buffer, inp, sizeof(qt_Zpoint) * inp_length);
-        tree->length = inp_length;
+        size_t new_length = copy_without_duplicates(inp_length, inp, tree->buffer);
+        tree->length = new_length;
         tree->allocated_length = inp_length;
         return 0;
     }
@@ -286,8 +314,6 @@ int qt_point_radius(qt_Tree tree,
     uint32_t center_x, uint32_t center_y, double radius,
     uint32_t **res_xs, uint32_t **res_ys, size_t *res_length) {
 
-    printf("%lu, %f\n", tree.length, radius);
-
     if (tree.length < 1) {
         *res_length = 0;
         *res_xs = NULL;
@@ -307,13 +333,17 @@ int qt_point_radius(qt_Tree tree,
 
     qt_Zpoint corner_points[] = {
         qt_zpoint(
-                (uint32_t) (center_x - outer_bbox_size_2), (uint32_t) (center_y - outer_bbox_size_2)),
+                (uint32_t) MAX(0., center_x - outer_bbox_size_2),
+                (uint32_t) MAX(0., center_y - outer_bbox_size_2)),
         qt_zpoint(
-                (uint32_t) (center_x + outer_bbox_size_2), (uint32_t) (center_y - outer_bbox_size_2)),
+                (uint32_t) center_x + outer_bbox_size_2,
+                (uint32_t) MAX(0., center_y - outer_bbox_size_2)),
         qt_zpoint(
-                (uint32_t) (center_x + outer_bbox_size_2), (uint32_t) (center_y + outer_bbox_size_2)),
+                (uint32_t) center_x + outer_bbox_size_2,
+                (uint32_t) center_y + outer_bbox_size_2),
         qt_zpoint(
-                (uint32_t) (center_x - outer_bbox_size_2), (uint32_t) (center_y + outer_bbox_size_2))
+                (uint32_t) center_x - outer_bbox_size_2,
+                (uint32_t) center_y + outer_bbox_size_2)
 
     };
 
@@ -334,8 +364,6 @@ int qt_point_radius(qt_Tree tree,
         }
     }
 
-    printf("%d %d %d prefix length: %d,%d\n", 
-            center_x, center_y, radius, local_prefix_length, outer_inter_prefix_length);
 
     size_t outer_min_idx;
     size_t outer_max_idx;
@@ -377,7 +405,6 @@ int qt_point_radius(qt_Tree tree,
 
     size_t _res_length = 0;
     size_t buf_cursor = outer_min_idx;
-    printf("%lu, %lu\n", outer_min_idx, outer_max_idx);
     for (; buf_cursor <= outer_max_idx; buf_cursor++) {
         uint32_t x, y;
         double dx, dy;
@@ -387,8 +414,9 @@ int qt_point_radius(qt_Tree tree,
         if (x > outer_max_x || x < outer_min_x ||
             y > outer_max_y || y < outer_min_y) continue;
 
-        dx = x - center_x;
-        dy = y - center_y;
+        dx = ((int64_t) x) - ((int64_t) center_x);
+        dy = ((int64_t) y) - ((int64_t) center_y);
+
 
         if ((x > inner_min_x && x < inner_max_x &&
              y > inner_min_y && y < inner_max_y) ||

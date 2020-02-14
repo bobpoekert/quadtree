@@ -42,21 +42,8 @@ ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y);
 int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp);
 int qt_insert_multi(qt_Tree *tree, size_t inp_length, uint32_t *xs, uint32_t *ys);
 
-/* returns a quadtree containing only points in the given bounding box. */
-qt_Tree qt_zbbox(qt_Tree tree, qt_Zpoint min, qt_Zpoint max);
-qt_Tree qt_bbox(qt_Tree tree, uint32_t min_x, uint32_t min_y, uint32_t max_x, uint32_t max_y);
-
-/* references the input buffer instead of copying it.
- it is the caller's responsibility to make sure the underlying tree
- is not freed while the tree returned by this function is still live */
-qt_Tree qt_zbbox_shallow(qt_Tree tree, qt_Zpoint min, qt_Zpoint max);
-
 /* writes the x and y coordinates of points in tree to malloc'd buffers assigned to xs and ys */
 void qt_points(qt_Tree tree, uint32_t **res_xs, uint32_t **res_ys);
-void qt_points_bbox(qt_Tree tree, 
-    uint32_t min_x, uint32_t min_y,
-    uint32_t max_x, uint32_t max_y,
-    uint32_t **res_xs, uint32_t **res_ys);
 
 /* finds all the points within radius of the given center point 
  returns zero on success and a negative value on error.
