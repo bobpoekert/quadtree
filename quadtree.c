@@ -326,7 +326,7 @@ int qt_point_radius(qt_Tree tree,
     // we only have to actually calculate distance for points that lie within outer minus inner
 
     double outer_bbox_size = radius * 2.;
-    double inner_bbox_size = radius * 1.4142135623730951;
+    double inner_bbox_size = radius * 1.4142135623730951; // sqrt(2)
     
     double inner_bbox_size_2 = inner_bbox_size / 2.;
     double outer_bbox_size_2 = outer_bbox_size / 2.;
@@ -366,27 +366,22 @@ int qt_point_radius(qt_Tree tree,
 
 
     size_t outer_min_idx;
-    size_t outer_max_idx;
 
     if (outer_inter_prefix_length > 0) {
 
         qt_Zpoint outer_point_min = corner_points[0] & outer_inter_prefix_mask;
         if (outer_point_min > 0) outer_point_min--;
-        qt_Zpoint outer_point_max = corner_points[0] | ~outer_inter_prefix_mask;
-        if (outer_point_max < tree.length-1) outer_point_max++; 
 
         // all of our result points lie within this range
         outer_min_idx = qt_zlookup(tree, outer_point_min);
-        outer_max_idx = qt_zlookup(tree, outer_point_max);
 
     } else {
         outer_min_idx = 0;
-        outer_max_idx = tree.length-1;
     }
 
-    uint32_t *res_xs_buf = malloc(sizeof(uint32_t) * (outer_max_idx - outer_min_idx));
+    uint32_t *res_xs_buf = malloc(sizeof(uint32_t) * (tree.length - outer_min_idx));
     if (!res_xs_buf) return -1;
-    uint32_t *res_ys_buf = malloc(sizeof(uint32_t) * (outer_max_idx - outer_min_idx));
+    uint32_t *res_ys_buf = malloc(sizeof(uint32_t) * (tree.length - outer_min_idx));
     if (!res_ys_buf) {
         free(res_xs_buf);
         return -1;
@@ -404,11 +399,13 @@ int qt_point_radius(qt_Tree tree,
     uint32_t outer_min_y = center_y - outer_bbox_size_2;
 
     size_t _res_length = 0;
+    qt_Zpoint target_max = corner_points[1] | ~outer_inter_prefix_mask;
     size_t buf_cursor = outer_min_idx;
-    for (; buf_cursor <= outer_max_idx; buf_cursor++) {
+    for(; buf_cursor < tree.length; buf_cursor++) {
         uint32_t x, y;
         double dx, dy;
         qt_Zpoint inp = tree.buffer[buf_cursor];
+        if (inp > target_max) break;
         qt_zpoint_decode(inp, &x, &y);
 
         if (x > outer_max_x || x < outer_min_x ||
@@ -416,7 +413,6 @@ int qt_point_radius(qt_Tree tree,
 
         dx = ((int64_t) x) - ((int64_t) center_x);
         dy = ((int64_t) y) - ((int64_t) center_y);
-
 
         if ((x > inner_min_x && x < inner_max_x &&
              y > inner_min_y && y < inner_max_y) ||
