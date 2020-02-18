@@ -28,12 +28,6 @@ size_t qt_zlookup(qt_Tree tree, qt_Zpoint targat);
 /* lookup point. returns index into tree buffer, or -1 if not found */
 ssize_t qt_lookup(qt_Tree tree, uint32_t x, uint32_t y);
 
-/* insert point. returns index into tree buffer, or < 0 if error.
- the only error condition is currently -1 for out of memory
- */
-ssize_t qt_zinsert(qt_Tree *tree, qt_Zpoint target);
-ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y);
-
 /* insert an array of points. significantly faster than inserting points one at a time
  (inserting points one at a time is literally insertion sort here)
 

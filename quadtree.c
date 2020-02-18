@@ -109,31 +109,6 @@ int qt_extend(qt_Tree *tree) {
     return tree->buffer == 0 ? -1 : 0;
 }
 
-ssize_t qt_zinsert(qt_Tree *tree, qt_Zpoint target) {
-    if (tree->allocated_length < 1) {
-        tree->buffer = malloc(sizeof(qt_Zpoint) * QT_INIT_BUFFER_SIZE);
-        if (tree->buffer == NULL) return -1;
-        tree->allocated_length = QT_INIT_BUFFER_SIZE;
-    }
-
-    size_t pivot = qt_zlookup(*tree, target);
-    if (tree->buffer[pivot] == target) return pivot;
-
-    if (tree->allocated_length <= tree->length+1) {
-        if (qt_extend(tree) < 0) return -1;
-    }
-
-    memmove(&tree->buffer[pivot + 1], &tree->buffer[pivot], tree->length - pivot);
-
-    tree->length++;
-    tree->buffer[pivot] = target;
-    return 0;
-}
-
-ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y) {
-    return qt_zinsert(tree, qt_zpoint(x, y));
-}
-
 size_t copy_without_duplicates(size_t buffer_size, uint64_t *buffer, uint64_t *res) {
     // buffer must be sorted
     if (buffer_size < 1) return 0;

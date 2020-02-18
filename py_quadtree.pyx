@@ -20,7 +20,6 @@ cdef extern from "quadtree.c":
     void qt_zpoint_decode(qt_Zpoint z, uint32_t *x, uint32_t *y)
 
     ssize_t qt_lookup(qt_Tree tree, uint32_t x, uint32_t y)
-    ssize_t qt_insert(qt_Tree *tree, uint32_t x, uint32_t y)
 
     int qt_zinsert_multi(qt_Tree *tree, size_t inp_length, qt_Zpoint *inp)
 
@@ -110,14 +109,6 @@ cdef class Quadtree:
 
         return idxes
 
-    def insert(self, uint32_t x, uint32_t y):
-        cdef ssize_t res = qt_insert(&self.tree, x, y)
-        if res == -1:
-            raise MemoryError
-        elif res < 0:
-            raise Exception
-
-        return res
 
     def insert_multi(self,
         np.ndarray[np.uint32_t, ndim=1, mode='c'] xs,
